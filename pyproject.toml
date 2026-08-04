@@ -137,11 +137,11 @@ dependencies = [
   # Hence the ``sys_platform == 'win32'`` marker: the dep (and its portalocker
   # / pywin32 tree) ships only where it's actually used.
   "concurrent-log-handler==0.9.29; sys_platform == 'win32'",
-  # First-party lifecycle and shared-metrics runtime. Relay 0.6 is the minimum
-  # lossless provider-codec contract. Managed calls pass request/response data
-  # through this native module in-process; shared metrics installs no network
-  # exporter and consumes only its bounded projection.
-  "nemo-relay>=0.6.0,<0.7; (sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'linux' and platform_machine == 'aarch64') or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64')",
+  # First-party lifecycle and shared-metrics runtime. Relay 0.7 supplies the
+  # public dynamic-plugin TOML loader used by the native runtime. Managed calls
+  # pass request/response data through this native module in-process; shared
+  # metrics installs no network exporter and consumes only its bounded projection.
+  "nemo-relay>=0.7.0,<0.8; (sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64') or (sys_platform == 'linux' and platform_machine == 'aarch64') or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64')",
 ]
 
 [project.optional-dependencies]
@@ -360,6 +360,11 @@ override-dependencies = [
 ]
 exclude-newer = "14 days"
 exclude-newer-package = { vercel = false, nemo-relay = false, huggingface_hub = false }
+
+[tool.uv.sources]
+# Keep #77915 testable until the released 0.7.0 wheel includes the dynamic
+# plugin TOML loader from NVIDIA/NeMo-Relay#694.
+nemo-relay = { git = "https://github.com/NVIDIA/NeMo-Relay.git", rev = "10e4b95d89731962dd9210dd3d7bcd9e391b6874" }
 
 [tool.setuptools]
 # Top-level single-file modules (not packages). Without this, uv2nix's
