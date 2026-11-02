@@ -24,16 +24,54 @@ as a no-op compatibility alias for existing installation commands.
 > `HERMES_NEMO_RELAY_ATIF_*` settings. Those legacy variables no longer
 > configure Relay exporters themselves.
 
-On supported platforms, Hermes requires NeMo Relay 0.10 for managed provider
+On supported platforms, Hermes requires NeMo Relay 1.0 for managed provider
 and tool calls.
 
 ## Runtime Dependency and Data Boundary
 
 Hermes installs the platform-specific `nemo-relay` native wheel from the
-bounded `>=0.10,<0.11` dependency range. The published package is built from
+bounded `>=1.0.0,<2` dependency range. The published package is built from
 the [NVIDIA NeMo Relay repository](https://github.com/NVIDIA/NeMo-Relay).
 Unsupported platforms use the explicit no-op runtime described above rather
 than downloading a different implementation.
+
+### Migrating from Relay 0.10 to 1.0
+
+This branch validates Hermes against NeMo Relay PR [#1589](https://github.com/NVIDIA/NeMo-Relay/pull/1589),
+pinned to commit `ff4c7d6f5d37e58609710d0c07572576a53b7976` in
+`[tool.uv.sources]` and `uv.lock`. Until the release is published, PM builds
+Relay from that source; a Rust toolchain is required on supported platforms.
+Remove the temporary source override and run `hermes pm lock` once the 1.0
+wheels are available. Commit the manifest and lockfile together.
+
+The crate split changes Rust SDK module paths and composition. Hermes uses
+the Python SDK, so those Rust import changes do not require Python import
+rewrites. Keep existing Relay `plugins.toml` files, shared-metrics consent,
+and provider/tool adapters when upgrading; validate them with the native
+runtime tests and smoke script below.
+
+Check every configured dynamic plugin or worker before upgrading. A
+`compat.relay` range capped below 1.0 rejects the new host. Upgrade and test
+the plugin against 1.0 before changing its declared range; changing the
+range alone does not establish compatibility. This includes machine-wide
+plugins in `/etc/nemo-relay/plugins.toml`, which have precedence over the
+explicit Hermes configuration file.
+
+After preparing the checkout's test environment, run the native integration
+coverage through the canonical runner:
+
+```bash
+scripts/run_tests.sh tests/agent/test_relay*.py tests/agent/test_auxiliary_relay.py \
+  tests/hermes_cli/test_relay*.py tests/hermes_cli/test_shared_metrics*.py \
+  tests/hermes_cli/test_doctor_relay_plugins.py tests/e2e/test_relay_native*.py
+```
+
+Run `scripts/smoke_nemo_relay_shared_metrics.py` as described below for a real
+CLI turn against a local provider. Use a clean machine or container for the
+comparison: a temporary `HERMES_HOME` does not isolate Relay's machine-wide
+plugin configuration.
+
+### Earlier Relay migrations
 
 Relay 0.10 requires observability configuration `version = 4`. Custom Python
 LLM execution intercepts receive `(name, request, context, next_call)`; the
